@@ -118,10 +118,11 @@ class TestBurger:
         burger.set_buns(bun)
         burger.ingredients = [ingredient_factory(price=price) for price in ingredient_prices]
 
-        assert burger.get_price() == pytest.approx(expected_price)
+        actual_price = burger.get_price()
         bun.get_price.assert_called_once_with()
         for ingredient in burger.ingredients:
             ingredient.get_price.assert_called_once_with()
+        assert actual_price == pytest.approx(expected_price)
 
     def test_get_price_counts_repeated_ingredient(self, burger, bun, ingredient_factory):
         ingredient = ingredient_factory(price=50)
