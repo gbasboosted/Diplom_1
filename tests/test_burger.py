@@ -1,4 +1,4 @@
-from unittest.mock import Mock
+from unittest.mock import Mock, call
 
 import pytest
 
@@ -7,8 +7,10 @@ from praktikum.burger import Burger
 
 
 class TestBurger:
-    def test_new_burger_has_no_bun_and_ingredients(self, burger):
+    def test_new_burger_has_no_bun(self, burger):
         assert burger.bun is None
+
+    def test_new_burger_has_no_ingredients(self, burger):
         assert burger.ingredients == []
 
     def test_burgers_have_independent_ingredients(self, burger, ingredient_factory):
@@ -22,7 +24,7 @@ class TestBurger:
 
         assert burger.bun is bun
 
-    def test_set_buns_replaces_bun_and_preserves_ingredients(
+    def test_set_buns_replaces_bun(
         self, burger, bun, ingredient_factory
     ):
         ingredient = ingredient_factory()
@@ -32,6 +34,16 @@ class TestBurger:
         burger.set_buns(replacement)
 
         assert burger.bun is replacement
+
+    def test_set_buns_preserves_ingredients_when_replacing_bun(
+        self, burger, bun, ingredient_factory
+    ):
+        ingredient = ingredient_factory()
+        burger.set_buns(bun)
+        burger.add_ingredient(ingredient)
+
+        burger.set_buns(Mock(spec=Bun))
+
         assert burger.ingredients == [ingredient]
 
     @pytest.mark.parametrize("count", [1, 3], ids=["one", "several"])
@@ -119,10 +131,26 @@ class TestBurger:
         burger.ingredients = [ingredient_factory(price=price) for price in ingredient_prices]
 
         actual_price = burger.get_price()
-        bun.get_price.assert_called_once_with()
-        for ingredient in burger.ingredients:
-            ingredient.get_price.assert_called_once_with()
+
         assert actual_price == pytest.approx(expected_price)
+
+    def test_get_price_requests_bun_price_once(self, burger, bun):
+        burger.set_buns(bun)
+
+        burger.get_price()
+
+        assert bun.get_price.call_args_list == [call()]
+
+    @pytest.mark.parametrize("ingredient_index", [0, 1, 2], ids=["first", "middle", "last"])
+    def test_get_price_requests_ingredient_price_once(
+        self, burger, bun, ingredient_factory, ingredient_index
+    ):
+        burger.set_buns(bun)
+        burger.ingredients = [ingredient_factory(price=price) for price in [50, 20, 30]]
+
+        burger.get_price()
+
+        assert burger.ingredients[ingredient_index].get_price.call_args_list == [call()]
 
     def test_get_price_counts_repeated_ingredient(self, burger, bun, ingredient_factory):
         ingredient = ingredient_factory(price=50)
